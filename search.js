@@ -88,9 +88,10 @@ export function expandedQuery(q){
  return[q,contextLabel(q),...safe].join(' ');
 }
 export function rankItems(items,q,{vectors=null,queryVector=null}={}){
+ const seen=new Set();
  return items.map(d=>{
   const kw=keywordScore(d,q),sem=queryVector&&vectors?cosine(queryVector,vectors.subarray(d.index*384,(d.index+1)*384)):0,fit=contextAdjustment(d,q);
   const base=queryVector?sem*.5+Math.min(Math.max(kw,0)/30,1)*.5:Math.min(Math.max(kw,0)/30,1);
   return{d,score:base+fit.score,kw,sem,allowed:fit.allowed};
- }).filter(x=>x.allowed&&(queryVector?(x.kw>0||x.sem>.52):x.kw>0)).sort((a,b)=>b.score-a.score).slice(0,80);
+ }).filter(x=>x.allowed&&(queryVector?(x.kw>0||x.sem>.52):x.kw>0)).sort((a,b)=>b.score-a.score).filter(x=>{const key=x.d.duplicateOf||x.d.shortId;if(seen.has(key))return false;seen.add(key);return true}).slice(0,80);
 }

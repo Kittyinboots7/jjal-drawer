@@ -1,4 +1,4 @@
-import {getIntents,keywordScore,cosine,contextAdjustment,contextLabel,expandedQuery,rankItems} from './search.js?v=everyday-2';
+import {getIntents,keywordScore,cosine,contextAdjustment,contextLabel,expandedQuery,rankItems} from './search.js?v=everyday-3';
 import {homeSuggestions} from './home-picks.js?v=everyday-1';
 const $=s=>document.querySelector(s),grid=$('#grid');
 let catalog=[],catalogMeta,mediaKind='photo',query='',page=0,showSaved=false,ranked=[],vectors,worker,aiReady=false,currentVector=null,requestId=0,currentItem;
@@ -105,7 +105,7 @@ async function initAI(){
 try{const r=await fetch('./catalog.json');if(!r.ok)throw Error();catalogMeta=await r.json();baseCatalogCount=catalogMeta.items.length;
 let items=catalogMeta.items;
 try{
- const response=await fetch('./everyday-replies.json?v=1');if(!response.ok)throw Error('supplement');
+ const response=await fetch('./everyday-replies.json?v=2');if(!response.ok)throw Error('supplement');
  const extra=await response.json();
  if(!Array.isArray(extra.items)||!Array.isArray(extra.overrides)||!Array.isArray(extra.vectors)||extra.vectors.length!==extra.items.length||extra.vectors.some(v=>!Array.isArray(v)||v.length!==384||v.some(n=>!Number.isFinite(n))))throw Error('supplement vectors');
  const known=new Set(items.map(d=>d.shortId));if(extra.items.some(d=>known.has(d.shortId)))throw Error('supplement duplicate');
