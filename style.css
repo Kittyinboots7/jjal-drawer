@@ -29,4 +29,4 @@ body:not(.has-results) footer{position:absolute;left:50%;bottom:18px;transform:t
 
 .home-title-link{color:inherit;text-decoration:none}.home-title-link:hover{opacity:.78}
 
-.developer-credit{margin:8px 0 0;color:#888;font-size:12px;line-height:1.6;font-weight:400}
+.developer-credit{margin:8px 0 0;color:#adadad;font:inherit;font-size:12px;line-height:normal;font-weight:400}
