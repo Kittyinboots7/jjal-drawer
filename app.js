@@ -3,6 +3,7 @@ import {homeSuggestions} from './home-picks.js?v=everyday-1';
 const $=s=>document.querySelector(s),grid=$('#grid');
 let catalog=[],catalogMeta,mediaKind='photo',query='',page=0,showSaved=false,ranked=[],vectors,worker,aiReady=false,currentVector=null,requestId=0,currentItem;
 let baseCatalogCount=0,extraVectors=[];
+let resolveCatalogReady;const catalogReady=new Promise(resolve=>{resolveCatalogReady=resolve});
 let favorites;try{favorites=new Set(JSON.parse(localStorage.getItem('jjal-favorites')||'[]'))}catch{favorites=new Set()}
 function toast(t){$('#toast').textContent=t;$('#toast').classList.add('visible');clearTimeout(toast.timer);toast.timer=setTimeout(()=>$('#toast').classList.remove('visible'),2600)}
 function saveFav(){try{localStorage.setItem('jjal-favorites',JSON.stringify([...favorites]))}catch{toast('이 브라우저에서는 보관함을 저장할 수 없어요.')}$('#savedCount').textContent=favorites.size}
@@ -93,6 +94,7 @@ function search(q){resultsTouched=false;query=q.trim().slice(0,240);$('#query').
 $('#searchForm').onsubmit=e=>{e.preventDefault();search($('#query').value)};
 for(const b of document.querySelectorAll('[data-query]'))b.onclick=()=>search(b.dataset.query);
 async function initAI(){
+ await catalogReady;
  try{const res=await fetch('./vectors.bin');if(!res.ok)throw Error('vectors');const baseVectors=new Float32Array(await res.arrayBuffer());if(baseVectors.length!==baseCatalogCount*384||extraVectors.length!==(catalog.length-baseCatalogCount)*384)throw Error('vector mismatch');vectors=new Float32Array(catalog.length*384);vectors.set(baseVectors);vectors.set(extraVectors,baseVectors.length);
  worker=new Worker('./ai-worker.js',{type:'module'});
  worker.onmessage=({data})=>{if(data.type==='progress'){$('#aiStatus').textContent=contextLabel(query)||'추천을 다듬는 중'}
@@ -112,7 +114,7 @@ try{
  const overrides=new Map(extra.overrides.map(d=>[d.shortId,d]));
  items=items.map(d=>({...d,...overrides.get(d.shortId)})).concat(extra.items);extraVectors=extra.vectors.flat();
 }catch(error){console.warn('Extra everyday replies unavailable:',error)}
-catalog=items.map((d,index)=>({...d,index}));$('#catalogInfo').textContent=`${catalog.length.toLocaleString()}개 · ${new Set(catalog.map(d=>d.show)).size}개 프로그램 · 수집일 ${new Date(catalogMeta.collectedAt).toLocaleDateString('ko-KR',{timeZone:'Asia/Seoul'})}`;rank()}catch{$('#resultInfo').textContent='짤 목록을 불러오지 못했어요. 잠시 후 새로고침해 주세요.'}
+catalog=items.map((d,index)=>({...d,index}));$('#catalogInfo').textContent=`${catalog.length.toLocaleString()}개 · ${new Set(catalog.map(d=>d.show)).size}개 프로그램 · 수집일 ${new Date(catalogMeta.collectedAt).toLocaleDateString('ko-KR',{timeZone:'Asia/Seoul'})}`;rank()}catch{$('#resultInfo').textContent='짤 목록을 불러오지 못했어요. 잠시 후 새로고침해 주세요.'}finally{resolveCatalogReady()}
 
 // One clickable suggestion at a time keeps the search entry point simple.
 const examples=[
