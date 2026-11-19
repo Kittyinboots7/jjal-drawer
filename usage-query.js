@@ -13,3 +13,12 @@ export function speechActForQuery(q){
  if(!/우리.?집|집이|집에/.test(q)&&/사랑|보고.?싶|애정|하트/.test(q))return 'affection';
  return null;
 }
+
+// Separate a proposal acceptance from a plain acknowledgement or a happy reaction.
+export function positiveActForQuery(q){
+ if(/안\s*좋|좋지\s*않|싫|별로|거절|불쾌|진행.*(?:말|않)|하지\s*마/.test(q))return null;
+ if(/진행\s*시켜|진행하자|진행해|가보자고|가즈아|렛츠고|레츠고|해보자|시작하자|출발하자/.test(q))return 'launch';
+ if(/^(?:콜|코+올|오케이|ㅇㅋ|ok|okay)[.!~ㅋㅎ\s]*$/i.test(q.trim())||/콜(?:하고|이라고|!|\s*하고)|제안.{0,15}(?:수락|찬성)|(?:수락|찬성).{0,15}제안|신나게\s*찬성/.test(q))return 'accept';
+ if(/^(?:좋아|좋다|좋네|좋아요|굿|대만족)[.!~ㅋㅎ\s]*$/.test(q.trim())||/마음에\s*(?:들|든)|내\s*스타일|긍정적으로\s*(?:답|대답)/.test(q))return 'approval';
+ return null;
+}

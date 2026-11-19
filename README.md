@@ -6,7 +6,7 @@
 
 - [서비스 열기](https://jjal-pocket-eugene.plumgnat514.chatgpt.site/)
 - 자연어 검색과 관계·말투 기반 후보 정렬
-- 한국 예능·드라마 65개 프로그램, DB 2,247개 항목
+- 한국 예능·드라마 65개 프로그램, DB 2,252개 항목
 - 사진과 움직이는 짤을 분리하고 결과를 3개씩 표시
 - 홈 추천 한 장, 사용 상황 설명, 바로 복사, 브라우저 보관함
 
@@ -23,7 +23,8 @@ python3 -m http.server 8000
 - `index.html`, `style.css`, `app.js`: 웹 화면
 - `search.js`, `usage-query.js`: 검색 및 용도·말투 구분
 - `ai-worker.js`: 브라우저 안에서 문장 임베딩 실행
-- `catalog.json`, `vectors.bin`: 검색 목록과 의미 검색 벡터
+- `catalog.json`, `vectors.bin`: 기본 검색 목록과 의미 검색 벡터
+- `everyday-replies.json`: 일상 긍정·수락·실행 독려 용도 보강, 추가 짤과 의미 검색 벡터
 - `home-picks.js`: 홈 추천 사용 상황
 - `stills/`: 출처가 기록된 정지 컷
 

@@ -1,4 +1,4 @@
-import {speechActForQuery,isBasicReplyQuery} from './usage-query.js';
+import {speechActForQuery,isBasicReplyQuery,positiveActForQuery} from './usage-query.js?v=everyday-2';
 export const intents=[
  {name:'사과 · 미안함',triggers:['미안','죄송','용서','사과하'],words:['미안','죄송','잘못','용서','사과'],context:'실수하거나 늦어서 상대에게 미안하다고 사과한다.'},
  {name:'확인 · 동의',triggers:['알겠','알았','확인','오케이','동의'],words:['알겠','알았','확인','오케이','인정','동의','접수','끄덕'],context:'상대의 말을 확인했고 알겠다고 답한다. 동의하고 받아들인다.'},
@@ -19,7 +19,7 @@ export const intents=[
 ];
 export function getIntents(q){const c=queryContext(q);return intents.filter(i=>i.triggers.some(t=>q.includes(t))&&!(c.genuine&&i.name==='웃음 · 놀림'))}
 export function keywordScore(d,q){
- if(!q.trim())return 0;const t=(d.title+' '+d.tags.join(' ')+' '+(d.captionText||'')).toLowerCase();let score=0;const act=speechActForQuery(q);if(act&&d.useCases?.includes(act))score+=12;if(isBasicReplyQuery(q)){if(d.basicReplyTokens?.includes(q.trim().replace(/[.!~\s]/g,'')))score+=10;else if(d.basicReplyTokens?.some(t=>['네','넵','예','응','웅'].includes(t)))score+=8;else if(d.basicReplyTokens?.length)score+=5;}if(/생일|생신|생축|버스데이|birthday/i.test(q)&&(/생일|생신|생축|버스데이|birthday/i.test(t)||d.eventTags?.includes('birthday')))score+=20;
+ if(!q.trim())return 0;const t=(d.title+' '+d.tags.join(' ')+' '+(d.captionText||'')+' '+(d.searchAliases||[]).join(' ')).toLowerCase();let score=0;const positive=positiveActForQuery(q);if(positive&&d.responseActs?.includes(positive))score+=18;const act=speechActForQuery(q);if(act&&d.useCases?.includes(act))score+=12;if(isBasicReplyQuery(q)){if(d.basicReplyTokens?.includes(q.trim().replace(/[.!~\s]/g,'')))score+=10;else if(d.basicReplyTokens?.some(t=>['네','넵','예','응','웅'].includes(t)))score+=8;else if(d.basicReplyTokens?.length)score+=5;}if(/생일|생신|생축|버스데이|birthday/i.test(q)&&(/생일|생신|생축|버스데이|birthday/i.test(t)||d.eventTags?.includes('birthday')))score+=20;
  const stop=new Set(['너무','싶어','하고','싶다','진심으로','친구가','친구','별거','아닌','그냥','조금','나는','내가','정말']);
  const tokens=q.toLowerCase().split(/[^가-힣a-z0-9]+/).filter(a=>a.length>1&&!stop.has(a));
  for(const a of tokens){if(t.includes(a))score+=5;else if(a.length>=3&&t.includes(a.slice(0,-1)))score+=2}
@@ -57,7 +57,8 @@ export function mediaProfile(d){
 export function contextAdjustment(d,q){
  const eventText=d.title+' '+(d.tags||[]).join(' ')+' '+(d.captionText||'');
  if(/생일|생신|생축|버스데이|birthday/i.test(q)&&!(/생일|생신|생축|버스데이|birthday/i.test(eventText)||d.eventTags?.includes('birthday')))return{allowed:false,score:0};
- const act=speechActForQuery(q);if(act&&!d.useCases?.includes(act))return{allowed:false,score:0};if(isBasicReplyQuery(q)&&(!d.basicReplyTokens?.length||d.basicReplyQuestion||d.basicReplyNegative))return{allowed:false,score:0};
+ const positive=positiveActForQuery(q);if(positive&&!d.responseActs?.includes(positive))return{allowed:false,score:0};
+ const act=positive?null:speechActForQuery(q);if(act&&!d.useCases?.includes(act))return{allowed:false,score:0};if(!positive&&isBasicReplyQuery(q)&&(!d.basicReplyTokens?.length||d.basicReplyQuestion||d.basicReplyNegative))return{allowed:false,score:0};
  const c=queryContext(q),p=mediaProfile(d);let n=/생일|생신|생축|버스데이|birthday/i.test(q)?(d.birthdayUse==='greeting'?.6:d.birthdayUse==='celebration'?.4:d.eventTags?.includes('birthday')?.1:0):0;
  if(c.anger&&!p.anger&&!p.firm)return{allowed:false,score:0};
  if(c.playful){

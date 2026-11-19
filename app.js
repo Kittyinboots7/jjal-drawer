@@ -1,7 +1,8 @@
-import {getIntents,keywordScore,cosine,contextAdjustment,contextLabel,expandedQuery,rankItems} from './search.js';
-import {homeSuggestions} from './home-picks.js';
+import {getIntents,keywordScore,cosine,contextAdjustment,contextLabel,expandedQuery,rankItems} from './search.js?v=everyday-2';
+import {homeSuggestions} from './home-picks.js?v=everyday-1';
 const $=s=>document.querySelector(s),grid=$('#grid');
 let catalog=[],catalogMeta,mediaKind='photo',query='',page=0,showSaved=false,ranked=[],vectors,worker,aiReady=false,currentVector=null,requestId=0,currentItem;
+let baseCatalogCount=0,extraVectors=[];
 let favorites;try{favorites=new Set(JSON.parse(localStorage.getItem('jjal-favorites')||'[]'))}catch{favorites=new Set()}
 function toast(t){$('#toast').textContent=t;$('#toast').classList.add('visible');clearTimeout(toast.timer);toast.timer=setTimeout(()=>$('#toast').classList.remove('visible'),2600)}
 function saveFav(){try{localStorage.setItem('jjal-favorites',JSON.stringify([...favorites]))}catch{toast('이 브라우저에서는 보관함을 저장할 수 없어요.')}$('#savedCount').textContent=favorites.size}
@@ -9,14 +10,29 @@ function escapeHTML(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':
 function safeURL(u){try{const v=new URL(u,window.location.href);return(v.protocol==='https:'||(v.origin===window.location.origin&&v.protocol==='http:'))?v.href:''}catch{return ''}}
 function kindOf(d){return d.animationStatus==='animated'?'motion':d.animationStatus==='static'?'photo':'unknown'}
 function eligible(d){return kindOf(d)===mediaKind&&(!$('#gentle').checked||!d.strong)&&(!showSaved||favorites.has(d.shortId))}
-let homeIds=[];
+function shuffled(items){
+ const copy=[...items];
+ for(let i=copy.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[copy[i],copy[j]]=[copy[j],copy[i]]}
+ return copy;
+}
+function readSession(key,fallback){try{return JSON.parse(sessionStorage.getItem(key))??fallback}catch{return fallback}}
+function writeSession(key,value){try{sessionStorage.setItem(key,JSON.stringify(value))}catch{}}
+let homeIds=[],homeRemaining=readSession('jjal-home-remaining',[]),lastHome=readSession('jjal-home-last',null);
+if(!Array.isArray(homeRemaining))homeRemaining=[];
 function pickHome(){
- let previous=homeIds;
- if(!previous.length){try{previous=JSON.parse(sessionStorage.getItem('jjal-home-ids')||'[]')}catch{previous=[]}}
- const pool=catalog.filter(d=>kindOf(d)==='photo'&&!d.strong&&!previous.includes(d.shortId)&&homeSuggestions.some(h=>h.id===d.shortId));
- const chosen=pool[Math.floor(Math.random()*pool.length)];
- homeIds=chosen?[chosen.shortId]:[];
- try{sessionStorage.setItem('jjal-home-ids',JSON.stringify(homeIds))}catch{}
+ const pool=catalog.filter(d=>kindOf(d)==='photo'&&!d.strong&&homeSuggestions.some(h=>h.id===d.shortId));
+ const ids=new Set(pool.map(d=>d.shortId));
+ homeRemaining=homeRemaining.filter(id=>ids.has(id));
+ if(!homeRemaining.length)homeRemaining=shuffled([...ids]);
+ const different=homeRemaining.findIndex(id=>{
+  const suggestion=homeSuggestions.find(h=>h.id===id),item=pool.find(d=>d.shortId===id);
+  return id!==lastHome?.id&&suggestion.group!==lastHome?.group&&item.show!==lastHome?.show;
+ });
+ const next=different>=0?different:Math.max(0,homeRemaining.findIndex(id=>id!==lastHome?.id));
+ const id=homeRemaining.splice(next,1)[0];
+ homeIds=id?[id]:[];
+ if(id){lastHome={id,group:homeSuggestions.find(h=>h.id===id).group,show:pool.find(d=>d.shortId===id).show};writeSession('jjal-home-last',lastHome)}
+ writeSession('jjal-home-remaining',homeRemaining);
 }
 $('#shuffleHome').onclick=()=>{pickHome();rank()};
 let aiStarted=false,resultsTouched=false;
@@ -77,7 +93,7 @@ function search(q){resultsTouched=false;query=q.trim().slice(0,240);$('#query').
 $('#searchForm').onsubmit=e=>{e.preventDefault();search($('#query').value)};
 for(const b of document.querySelectorAll('[data-query]'))b.onclick=()=>search(b.dataset.query);
 async function initAI(){
- try{const res=await fetch('./vectors.bin');if(!res.ok)throw Error('vectors');vectors=new Float32Array(await res.arrayBuffer());if(vectors.length!==catalog.length*384)throw Error('vector mismatch');
+ try{const res=await fetch('./vectors.bin');if(!res.ok)throw Error('vectors');const baseVectors=new Float32Array(await res.arrayBuffer());if(baseVectors.length!==baseCatalogCount*384||extraVectors.length!==(catalog.length-baseCatalogCount)*384)throw Error('vector mismatch');vectors=new Float32Array(catalog.length*384);vectors.set(baseVectors);vectors.set(extraVectors,baseVectors.length);
  worker=new Worker('./ai-worker.js',{type:'module'});
  worker.onmessage=({data})=>{if(data.type==='progress'){$('#aiStatus').textContent=contextLabel(query)||'추천을 다듬는 중'}
  else if(data.type==='ready'){aiReady=true;$('#aiStatus').textContent=contextLabel(query)||'추천을 다듬는 중';if(query)worker.postMessage({type:'query',query:expandedQuery(query),id:requestId})}
@@ -86,18 +102,78 @@ async function initAI(){
  worker.onerror=()=>{$('#aiStatus').textContent='상황 키워드 검색 사용 중'};worker.postMessage({type:'init'});
  }catch{$('#aiStatus').textContent='상황 키워드 검색 사용 중'}
 }
-try{const r=await fetch('./catalog.json');if(!r.ok)throw Error();catalogMeta=await r.json();catalog=catalogMeta.items.map((d,index)=>({...d,index}));$('#catalogInfo').textContent=`${catalog.length.toLocaleString()}개 · ${new Set(catalog.map(d=>d.show)).size}개 프로그램 · 수집일 ${new Date(catalogMeta.collectedAt).toLocaleDateString('ko-KR',{timeZone:'Asia/Seoul'})}`;rank()}catch{$('#resultInfo').textContent='짤 목록을 불러오지 못했어요. 잠시 후 새로고침해 주세요.'}
+try{const r=await fetch('./catalog.json');if(!r.ok)throw Error();catalogMeta=await r.json();baseCatalogCount=catalogMeta.items.length;
+let items=catalogMeta.items;
+try{
+ const response=await fetch('./everyday-replies.json?v=1');if(!response.ok)throw Error('supplement');
+ const extra=await response.json();
+ if(!Array.isArray(extra.items)||!Array.isArray(extra.overrides)||!Array.isArray(extra.vectors)||extra.vectors.length!==extra.items.length||extra.vectors.some(v=>!Array.isArray(v)||v.length!==384||v.some(n=>!Number.isFinite(n))))throw Error('supplement vectors');
+ const known=new Set(items.map(d=>d.shortId));if(extra.items.some(d=>known.has(d.shortId)))throw Error('supplement duplicate');
+ const overrides=new Map(extra.overrides.map(d=>[d.shortId,d]));
+ items=items.map(d=>({...d,...overrides.get(d.shortId)})).concat(extra.items);extraVectors=extra.vectors.flat();
+}catch(error){console.warn('Extra everyday replies unavailable:',error)}
+catalog=items.map((d,index)=>({...d,index}));$('#catalogInfo').textContent=`${catalog.length.toLocaleString()}개 · ${new Set(catalog.map(d=>d.show)).size}개 프로그램 · 수집일 ${new Date(catalogMeta.collectedAt).toLocaleDateString('ko-KR',{timeZone:'Asia/Seoul'})}`;rank()}catch{$('#resultInfo').textContent='짤 목록을 불러오지 못했어요. 잠시 후 새로고침해 주세요.'}
 
 // One clickable suggestion at a time keeps the search entry point simple.
-const examples=['친구에게 장난스럽게 화난 척하고 싶어','친구에게 진짜 불쾌하다고 말하고 싶어','월요일 출근하기 너무 싫어','친구가 또 지각해서 한마디 하고 싶어','별거 아닌 일 해놓고 생색내고 싶어','진심으로 축하하고 응원하고 싶어','맛있는 거 먹고 세상 행복할 때','황당해서 말이 안 나와','부탁을 정중하게 거절하고 싶어','퇴근하고 집에 가고 싶어'];
-let exampleIndex=0,examplePaused=false;
+const examples=[
+ '친구 말에 넵 하고 가볍게 답하고 싶어',
+ '월요일 출근하기 너무 싫어',
+ '도와준 친구에게 진짜 고맙다고 하고 싶어',
+ '점심시간만 기다리는 중이야',
+ '미루던 일을 끝낸 친구를 칭찬하고 싶어',
+ '집에 오자마자 소파에 쓰러졌어',
+ '친구에게 장난스럽게 화난 척하고 싶어',
+ '생일인 친구에게 능청스럽게 축하하고 싶어',
+ '친구가 알려준 꿀팁에 감사하고 싶어',
+ '친구가 또 지각해서 한마디 하고 싶어',
+ '같이 하는 일이 힘들지만 서로 응원하고 싶어',
+ '친구 음식이 맛있어 보여서 한 입 얻어먹고 싶어',
+ '별거 아닌 일 해놓고 생색내고 싶어',
+ '작은 실수를 해서 바로 미안하다고 하고 싶어',
+ '오늘은 커피가 두 배로 필요해',
+ '친구의 놀러 가자는 말에 신나게 찬성하고 싶어',
+ '친구 말에 살짝 삐졌다고 장난치고 싶어',
+ '퇴근하고 집에 가고 싶어',
+ '할 일이 많은데 머리가 멍해',
+ '말로 하기 쑥스러워서 하트로 마음을 전하고 싶어',
+ '맛있는 거 먹고 세상 행복할 때',
+ '맞는 말이라 당연하지 하고 동의하고 싶어',
+ '친구에게 진짜 불쾌하다고 말하고 싶어',
+ '자야 하는데 잠이 안 와',
+ '주말에 친구들이랑 놀 생각에 신났어',
+ '황당해서 말이 안 나와',
+ '힘든 친구에게 괜찮은지 물어보고 싶어',
+ '아무것도 안 하고 쉬고 싶어',
+ '친구의 좋은 소식에 박수쳐 주고 싶어',
+ '뭘 해도 잘 안 풀려서 한숨 나와',
+ '친구의 웃긴 말에 빵 터졌어',
+ '도와준 친구에게 고마워서 감동했어',
+ '친구에게 장난으로 새침하게 거절하고 싶어',
+ '다 같이 해보자고 기운을 북돋우고 싶어',
+ '별일 없는데 오늘 기분이 좋아',
+ '부탁을 정중하게 거절하고 싶어',
+ '친구의 제안에 콜! 하고 답하고 싶어',
+ '좋아, 그 계획대로 진행시켜',
+ '그거 완전 내 스타일이라고 말하고 싶어',
+ '망설이는 친구에게 가보자고 하고 싶어'
+];
+let exampleRemaining=readSession('jjal-example-remaining',[]),lastExample=readSession('jjal-example-last',''),examplePaused=false;
+if(!Array.isArray(exampleRemaining))exampleRemaining=[];
 const exampleButton=$('#exampleQuery');
+function nextExample(){
+ exampleRemaining=exampleRemaining.filter(q=>examples.includes(q));
+ if(!exampleRemaining.length)exampleRemaining=shuffled(examples);
+ if(exampleRemaining.length>1&&exampleRemaining[0]===lastExample)[exampleRemaining[0],exampleRemaining[1]]=[exampleRemaining[1],exampleRemaining[0]];
+ lastExample=exampleRemaining.shift();exampleButton.textContent=lastExample;
+ writeSession('jjal-example-remaining',exampleRemaining);writeSession('jjal-example-last',lastExample);
+}
+nextExample();
 exampleButton.onclick=()=>search(exampleButton.textContent);
 exampleButton.onpointerenter=()=>{examplePaused=true};
 exampleButton.onpointerleave=()=>{examplePaused=false};
 setInterval(()=>{
  if(document.hidden||examplePaused||document.activeElement===exampleButton||(document.activeElement===$('#query')&&$('#query').value.trim()))return;
- const next=()=>{exampleIndex=(exampleIndex+1)%examples.length;exampleButton.textContent=examples[exampleIndex];exampleButton.classList.remove('changing')};
+ const next=()=>{nextExample();exampleButton.classList.remove('changing')};
  if(window.matchMedia('(prefers-reduced-motion: reduce)').matches){next();return}
  exampleButton.classList.add('changing');setTimeout(()=>{if(document.activeElement===exampleButton||examplePaused){exampleButton.classList.remove('changing');return}next()},160);
 },4500);
