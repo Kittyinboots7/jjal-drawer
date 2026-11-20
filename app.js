@@ -129,7 +129,7 @@ async function initAI(){
 try{const r=await fetch('./catalog.json');if(!r.ok)throw Error();catalogMeta=await r.json();baseCatalogCount=catalogMeta.items.length;
 let items=catalogMeta.items;
 try{
- const response=await fetch('./everyday-replies.json?v=daily-pack-3');if(!response.ok)throw Error('supplement');
+ const response=await fetch('./everyday-replies.json?v=user-pack-1');if(!response.ok)throw Error('supplement');
  const extra=await response.json();
  if(!Array.isArray(extra.items)||!Array.isArray(extra.overrides))throw Error('supplement schema');
  let supplementVectors;
