@@ -1,4 +1,4 @@
-import {startAnalytics,trackSearch,trackSearchResults,trackCopy} from './analytics.js?v=1';
+import {startAnalytics,trackSearch,trackSearchResults,trackCopy} from './analytics.js?v=2';
 import {copyAnimated,animationMime} from './motion-copy.js?v=1';
 import {getIntents,keywordScore,cosine,contextAdjustment,contextLabel,expandedQuery,rankItems} from './search.js?v=famous-scenes-1';
 import {homeSuggestions} from './home-picks.js?v=cinema-home-1';

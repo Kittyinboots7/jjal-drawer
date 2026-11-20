@@ -1,4 +1,4 @@
-import {measurementId} from './analytics-config.js?v=1';
+import {measurementId} from './analytics-config.js?v=2';
 const validId=/^G-[A-Z0-9]+$/;
 let started=false;
 export function startAnalytics(){
