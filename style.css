@@ -32,3 +32,5 @@ body:not(.has-results) footer{position:absolute;left:50%;bottom:40px;transform:t
 footer{display:flex;align-items:center;justify-content:center;gap:8px;color:#adadad;font-size:12px;line-height:normal;font-weight:400;white-space:nowrap}footer button{padding:0;font:inherit;color:inherit}
 
 .filters{gap:6px}.filters button{border:1px solid #d5d5d5;background:#fff;color:#666;font-weight:500}.filters button:hover{border-color:#777;color:#222}.filters button.active{background:#242424;border-color:#242424;color:#fff;font-weight:600}
+
+.card-actions{display:flex;align-items:center;gap:6px}.card-actions .quick-copy{background:#242424;color:#fff}.quick-save{border:1px solid #ddd;border-radius:9px;background:#fff;color:#666;font-size:13px;padding:8px 10px;white-space:nowrap}.quick-save:disabled{opacity:.5;cursor:wait}@media(max-width:600px){.card-actions{width:100%}.card-actions button{flex:1;padding:9px 4px;font-size:12px}}

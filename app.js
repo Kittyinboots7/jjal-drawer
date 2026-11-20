@@ -1,3 +1,4 @@
+import {copyAnimated,animationMime} from './motion-copy.js?v=1';
 import {getIntents,keywordScore,cosine,contextAdjustment,contextLabel,expandedQuery,rankItems} from './search.js?v=daily-pack-1';
 import {homeSuggestions} from './home-picks.js?v=everyday-1';
 const $=s=>document.querySelector(s),grid=$('#grid');
@@ -59,9 +60,13 @@ function render(){
   preview.innerHTML=`<div class="image-box"><img src="${escapeHTML(safeURL(d.imageUrl))}" loading="lazy" decoding="async" alt="${escapeHTML(d.title)}">${!home&&ranked[page]?.d.shortId===d.shortId?'<span class="recommended">추천</span>':''}</div>`;
   preview.querySelector('img').onerror=function(){this.alt='짤을 불러오지 못했어요. 원본을 확인해 주세요.'};preview.onclick=()=>openDetail(d);card.append(preview);
   const body=document.createElement('div');body.className='card-body';const show=document.createElement('span');show.className='show';show.textContent=d.show;body.append(show);
-  const action=document.createElement(kindOf(d)==='motion'?'a':'button');action.className='quick-copy';
-  if(kindOf(d)==='motion'){action.href=safeURL(d.imageUrl);action.target='_blank';action.rel='noopener';action.textContent='원본 보기'}else{action.textContent='복사';action.onclick=()=>copyItem(d)}
-  action.setAttribute('aria-label',(d.captionText||d.situationSummary||d.show)+' '+action.textContent);body.append(action);
+  const action=document.createElement('button');action.className='quick-copy';action.textContent='복사';action.onclick=()=>copyItem(d);
+  action.setAttribute('aria-label',(d.captionText||d.situationSummary||d.show)+' 복사');
+  if(kindOf(d)==='motion'){
+   action.title='움짤 복사 · 앱에 따라 원본 링크로 붙을 수 있어요';
+   const actions=document.createElement('div');actions.className='card-actions';actions.append(action);
+   const save=document.createElement('button');save.className='quick-save';save.textContent='저장';save.setAttribute('aria-label',d.show+' 움직이는 원본 저장');save.onclick=()=>downloadItem(d,save);actions.append(save);body.append(actions);
+  }else body.append(action);
   if(home){
    const suggestion=homeSuggestions.find(h=>h.id===d.shortId);
    const copy=document.createElement('div');copy.className='home-copy';
@@ -72,18 +77,35 @@ function render(){
  }
  $('#empty').hidden=ranked.length>0||home;$('#more').hidden=home||ranked.length<=page+3;$('#previous').hidden=home||page===0;saveFav()
 }
-function openDetail(d){currentItem=d;$('#detailMedia').replaceChildren();let img=new Image();img.src=safeURL(d.imageUrl);img.alt=d.title;$('#detailMedia').append(img);$('#detailShow').textContent=d.show+' · '+d.genre;$('#detailTitle').textContent=d.title.replace(/움짤|이미지/g,'').trim();$('#original').href=safeURL(d.originalImageUrl||d.imageUrl);$('#source').href=safeURL(d.sourceUrl);$('#source').textContent=(d.sourceProvider||'짤봇')+' 출처 보기';$('#favorite').textContent=favorites.has(d.shortId)?'♥ 모아뒀어요':'♡ 모아두기';$('#detailHint').textContent=kindOf(d)==='motion'?'움직임을 유지하려면 원본을 저장해 주세요.':'길게 누르거나 원본을 열어 저장할 수 있어요.';$('#copyImage').textContent='복사';$('#detail').showModal()}
+function openDetail(d){currentItem=d;$('#detailMedia').replaceChildren();let img=new Image();img.src=safeURL(d.imageUrl);img.alt=d.title;$('#detailMedia').append(img);$('#detailShow').textContent=d.show+' · '+d.genre;$('#detailTitle').textContent=d.title.replace(/움짤|이미지/g,'').trim();$('#original').href=safeURL(d.originalImageUrl||d.imageUrl);$('#source').href=safeURL(d.sourceUrl);$('#source').textContent=(d.sourceProvider||'짤봇')+' 출처 보기';$('#favorite').textContent=favorites.has(d.shortId)?'♥ 모아뒀어요':'♡ 모아두기';$('#detailHint').textContent=kindOf(d)==='motion'?'블로그에는 복사해서 붙여넣으세요. 카톡에서 링크로 붙으면 원본을 저장해 첨부해 주세요.':'길게 누르거나 원본을 열어 저장할 수 있어요.';$('#copyImage').textContent='복사';$('#downloadOriginal').hidden=kindOf(d)!=='motion';$('#detail').showModal()}
 $('#favorite').onclick=()=>{if(!currentItem)return;const id=currentItem.shortId;favorites.has(id)?favorites.delete(id):favorites.add(id);$('#favorite').textContent=favorites.has(id)?'♥ 모아뒀어요':'♡ 모아두기';rank()};
 $('#copyImage').onclick=()=>{if(currentItem)copyItem(currentItem)};
+$('#downloadOriginal').onclick=()=>{if(currentItem)downloadItem(currentItem,$('#downloadOriginal'))};
 async function copyItem(d){
  resultsTouched=true;
+ if(kindOf(d)==='motion'){
+  try{const mode=await copyAnimated({...d,imageUrl:safeURL(d.imageUrl)});toast(mode==='native'?'움직이는 원본을 복사했어요.':mode==='html'?'움짤을 복사했어요. 카톡에서 링크로 붙으면 저장 후 첨부해 주세요.':'원본 링크를 복사했어요. 움직이는 파일은 저장해 첨부해 주세요.')}
+  catch{toast('복사 권한을 확인하거나 저장 버튼을 이용해 주세요.')}
+  return;
+ }
  try{
   if(!navigator.clipboard?.write||!window.ClipboardItem)throw Error('not supported');
   // Start clipboard write during the user gesture, including on Safari.
   const blobPromise=(async()=>{let r=await fetch(d.imageUrl);if(!r.ok)throw Error('image');const blob=await r.blob();const bitmap=await createImageBitmap(blob),canvas=document.createElement('canvas');canvas.width=bitmap.width;canvas.height=bitmap.height;canvas.getContext('2d').drawImage(bitmap,0,0);return await new Promise(resolve=>canvas.toBlob(resolve,'image/png'))})();
-  await navigator.clipboard.write([new ClipboardItem({'image/png':blobPromise})]);toast(d.type.includes('gif')?'첫 장면을 복사했어요. 움직임을 유지하려면 원본을 저장해 주세요.':'복사했어요. 카톡이나 블로그에 붙여넣어 보세요.');
+  await navigator.clipboard.write([new ClipboardItem({'image/png':blobPromise})]);toast('복사했어요. 카톡이나 블로그에 붙여넣어 보세요.');
  }catch{try{await navigator.clipboard.writeText(d.imageUrl);toast('바로 복사하기 어려워 원본 링크를 복사했어요.')}catch{toast('원본 열기를 눌러 이미지를 저장해 주세요.')}}
 };
+async function downloadItem(d,button){
+ resultsTouched=true;
+ if(button?.disabled)return;
+ const label=button?.textContent;if(button){button.disabled=true;button.textContent='저장 중…'}
+ try{
+  const r=await fetch(safeURL(d.imageUrl));if(!r.ok)throw Error('download');const blob=await r.blob();
+  const mime=animationMime(d),extension=mime==='image/gif'?'gif':mime==='image/webp'?'webp':'png';
+  const url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download='jjal-'+d.shortId.replace(/[^a-zA-Z0-9_-]/g,'')+'.'+extension;document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);toast('움직이는 원본 파일을 저장했어요. 카톡에 첨부해 보세요.');
+ }catch{openDetail(d);$('#detailHint').textContent='바로 저장하기 어려워요. 원본 열기를 눌러 파일을 저장해 주세요.'}
+ finally{if(button){button.disabled=false;button.textContent=label}}
+}
 for(const dialog of document.querySelectorAll('dialog')){dialog.querySelector('.close').onclick=()=>dialog.close();dialog.addEventListener('click',e=>{if(e.target===dialog){let r=dialog.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)dialog.close()}})}
 $('#about').onclick=()=>$('#aboutDialog').showModal();
 $('#saved').onclick=()=>{showSaved=!showSaved;if(showSaved){query='';$('#query').value='';currentVector=null;requestId++}$('#saved').classList.toggle('selected',showSaved);$('#saved').setAttribute('aria-pressed',String(showSaved));page=0;rank()};
