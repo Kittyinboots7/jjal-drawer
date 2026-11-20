@@ -1,4 +1,4 @@
-import {getIntents,keywordScore,cosine,contextAdjustment,contextLabel,expandedQuery,rankItems} from './search.js?v=everyday-3';
+import {getIntents,keywordScore,cosine,contextAdjustment,contextLabel,expandedQuery,rankItems} from './search.js?v=daily-pack-1';
 import {homeSuggestions} from './home-picks.js?v=everyday-1';
 const $=s=>document.querySelector(s),grid=$('#grid');
 let catalog=[],catalogMeta,mediaKind='photo',query='',page=0,showSaved=false,ranked=[],vectors,worker,aiReady=false,currentVector=null,requestId=0,currentItem;
@@ -107,12 +107,16 @@ async function initAI(){
 try{const r=await fetch('./catalog.json');if(!r.ok)throw Error();catalogMeta=await r.json();baseCatalogCount=catalogMeta.items.length;
 let items=catalogMeta.items;
 try{
- const response=await fetch('./everyday-replies.json?v=2');if(!response.ok)throw Error('supplement');
+ const response=await fetch('./everyday-replies.json?v=daily-pack-1');if(!response.ok)throw Error('supplement');
  const extra=await response.json();
- if(!Array.isArray(extra.items)||!Array.isArray(extra.overrides)||!Array.isArray(extra.vectors)||extra.vectors.length!==extra.items.length||extra.vectors.some(v=>!Array.isArray(v)||v.length!==384||v.some(n=>!Number.isFinite(n))))throw Error('supplement vectors');
+ if(!Array.isArray(extra.items)||!Array.isArray(extra.overrides))throw Error('supplement schema');
+ let supplementVectors;
+ if(extra.vectorData){const bytes=Uint8Array.from(atob(extra.vectorData),c=>c.charCodeAt(0));if(bytes.byteLength!==extra.items.length*384*4)throw Error('supplement vector length');supplementVectors=new Float32Array(bytes.buffer)}
+ else{if(!Array.isArray(extra.vectors)||extra.vectors.length!==extra.items.length||extra.vectors.some(v=>!Array.isArray(v)||v.length!==384))throw Error('supplement vectors');supplementVectors=new Float32Array(extra.vectors.flat())}
+ if(supplementVectors.some(n=>!Number.isFinite(n)))throw Error('supplement vectors invalid');
  const known=new Set(items.map(d=>d.shortId));if(extra.items.some(d=>known.has(d.shortId)))throw Error('supplement duplicate');
  const overrides=new Map(extra.overrides.map(d=>[d.shortId,d]));
- items=items.map(d=>({...d,...overrides.get(d.shortId)})).concat(extra.items);extraVectors=extra.vectors.flat();
+ items=items.concat(extra.items).map(d=>({...d,...overrides.get(d.shortId)}));extraVectors=supplementVectors;
 }catch(error){console.warn('Extra everyday replies unavailable:',error)}
 catalog=items.map((d,index)=>({...d,index}));$('#catalogInfo').textContent=`${catalog.length.toLocaleString()}개 · ${new Set(catalog.map(d=>d.show)).size}개 프로그램 · 수집일 ${new Date(catalogMeta.collectedAt).toLocaleDateString('ko-KR',{timeZone:'Asia/Seoul'})}`;rank()}catch{$('#resultInfo').textContent='짤 목록을 불러오지 못했어요. 잠시 후 새로고침해 주세요.'}finally{resolveCatalogReady()}
 
