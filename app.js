@@ -1,7 +1,10 @@
+import {startAnalytics,trackSearch,trackSearchResults,trackCopy} from './analytics.js?v=1';
 import {copyAnimated,animationMime} from './motion-copy.js?v=1';
 import {getIntents,keywordScore,cosine,contextAdjustment,contextLabel,expandedQuery,rankItems} from './search.js?v=famous-scenes-1';
-import {homeSuggestions} from './home-picks.js?v=everyday-1';
+import {homeSuggestions} from './home-picks.js?v=cinema-home-1';
+const analyticsEnabled=startAnalytics();
 const $=s=>document.querySelector(s),grid=$('#grid');
+if(analyticsEnabled){const note=document.createElement('p');note.textContent='서비스 개선을 위해 Google Analytics로 방문 현황·검색어·복사 이용 통계를 수집해요. 검색창에 이름·연락처 등 개인정보를 입력하지 마세요.';$('#aboutDialog .detail-body').append(note)}
 let catalog=[],catalogMeta,mediaKind='photo',query='',page=0,showSaved=false,ranked=[],vectors,worker,aiReady=false,currentVector=null,requestId=0,currentItem;
 let baseCatalogCount=0,extraVectors=[],excludedIds=new Set(),excludedImageUrls=new Set();
 let resolveCatalogReady;const catalogReady=new Promise(resolve=>{resolveCatalogReady=resolve});
@@ -19,7 +22,7 @@ function shuffled(items){
 }
 function readSession(key,fallback){try{return JSON.parse(sessionStorage.getItem(key))??fallback}catch{return fallback}}
 function writeSession(key,value){try{sessionStorage.setItem(key,JSON.stringify(value))}catch{}}
-let homeIds=[],homeRemaining=readSession('jjal-home-remaining',[]),lastHome=readSession('jjal-home-last',null);
+let homeIds=[],homeRemaining=readSession('jjal-home-remaining-cinema-1',[]),lastHome=readSession('jjal-home-last',null);
 if(!Array.isArray(homeRemaining))homeRemaining=[];
 function pickHome(){
  const pool=catalog.filter(d=>kindOf(d)==='photo'&&!d.strong&&homeSuggestions.some(h=>h.id===d.shortId));
@@ -34,10 +37,16 @@ function pickHome(){
  const id=homeRemaining.splice(next,1)[0];
  homeIds=id?[id]:[];
  if(id){lastHome={id,group:homeSuggestions.find(h=>h.id===id).group,show:pool.find(d=>d.shortId===id).show};writeSession('jjal-home-last',lastHome)}
- writeSession('jjal-home-remaining',homeRemaining);
+ writeSession('jjal-home-remaining-cinema-1',homeRemaining);
 }
 $('#shuffleHome').onclick=()=>{pickHome();rank()};
-let aiStarted=false,resultsTouched=false;
+let aiStarted=false,resultsTouched=false,pendingSearchMetrics=null,aiFailed=false;
+function finishSearchMetrics(method){
+ const pending=pendingSearchMetrics;
+ if(!pending||pending.id!==requestId)return;
+ pendingSearchMetrics=null;
+ trackSearchResults(pending.query,ranked.length,method,pending.mediaKind);
+}
 function rank(){
  if(query)ranked=rankItems(catalog.filter(eligible),query,{vectors,queryVector:currentVector});
  else if(showSaved)ranked=catalog.filter(eligible).map(d=>({d}));
@@ -84,7 +93,7 @@ $('#downloadOriginal').onclick=()=>{if(currentItem)downloadItem(currentItem,$('#
 async function copyItem(d){
  resultsTouched=true;
  if(kindOf(d)==='motion'){
-  try{const mode=await copyAnimated({...d,imageUrl:safeURL(d.imageUrl)});toast(mode==='native'?'움직이는 원본을 복사했어요.':mode==='html'?'움짤을 복사했어요. 카톡에서 링크로 붙으면 저장 후 첨부해 주세요.':'원본 링크를 복사했어요. 움직이는 파일은 저장해 첨부해 주세요.')}
+  try{const mode=await copyAnimated({...d,imageUrl:safeURL(d.imageUrl)});trackCopy(d,mode);toast(mode==='native'?'움직이는 원본을 복사했어요.':mode==='html'?'움짤을 복사했어요. 카톡에서 링크로 붙으면 저장 후 첨부해 주세요.':'원본 링크를 복사했어요. 움직이는 파일은 저장해 첨부해 주세요.')}
   catch{toast('복사 권한을 확인하거나 저장 버튼을 이용해 주세요.')}
   return;
  }
@@ -92,8 +101,8 @@ async function copyItem(d){
   if(!navigator.clipboard?.write||!window.ClipboardItem)throw Error('not supported');
   // Start clipboard write during the user gesture, including on Safari.
   const blobPromise=(async()=>{let r=await fetch(d.imageUrl);if(!r.ok)throw Error('image');const blob=await r.blob();const bitmap=await createImageBitmap(blob),canvas=document.createElement('canvas');canvas.width=bitmap.width;canvas.height=bitmap.height;canvas.getContext('2d').drawImage(bitmap,0,0);return await new Promise(resolve=>canvas.toBlob(resolve,'image/png'))})();
-  await navigator.clipboard.write([new ClipboardItem({'image/png':blobPromise})]);toast('복사했어요. 카톡이나 블로그에 붙여넣어 보세요.');
- }catch{try{await navigator.clipboard.writeText(d.imageUrl);toast('바로 복사하기 어려워 원본 링크를 복사했어요.')}catch{toast('원본 열기를 눌러 이미지를 저장해 주세요.')}}
+  await navigator.clipboard.write([new ClipboardItem({'image/png':blobPromise})]);trackCopy(d,'image');toast('복사했어요. 카톡이나 블로그에 붙여넣어 보세요.');
+ }catch{try{await navigator.clipboard.writeText(d.imageUrl);trackCopy(d,'link');toast('바로 복사하기 어려워 원본 링크를 복사했어요.')}catch{toast('원본 열기를 눌러 이미지를 저장해 주세요.')}}
 };
 async function downloadItem(d,button){
  resultsTouched=true;
@@ -112,7 +121,7 @@ $('#saved').onclick=()=>{showSaved=!showSaved;if(showSaved){query='';$('#query')
 $('#more').onclick=()=>{page+=3;render()};$('#previous').onclick=()=>{page=Math.max(0,page-3);render()};
 for(const b of document.querySelectorAll('[data-kind]'))b.onclick=()=>{mediaKind=b.dataset.kind;document.querySelectorAll('[data-kind]').forEach(x=>{x.classList.toggle('active',x===b);x.setAttribute('aria-pressed',String(x===b))});page=0;rank()};
 $('#gentle').onchange=()=>{page=0;rank()};
-function search(q){resultsTouched=false;query=q.trim().slice(0,240);$('#query').value=query;page=0;showSaved=false;currentVector=null;requestId++;rank();if(query&&!aiStarted){aiStarted=true;initAI()}if(query&&aiReady){$('#aiStatus').textContent=contextLabel(query)||'상황을 이해하는 중…';worker.postMessage({type:'query',query:expandedQuery(query),id:requestId})}else if(!aiReady&&query){$('#aiStatus').textContent=contextLabel(query)||'어울리는 짤을 찾는 중'}}
+function search(q){resultsTouched=false;query=q.trim().slice(0,240);$('#query').value=query;page=0;showSaved=false;currentVector=null;requestId++;rank();pendingSearchMetrics=query?{id:requestId,query,mediaKind}:null;if(query){trackSearch(query,mediaKind);if(ranked.length||aiFailed)finishSearchMetrics('keyword')}if(query&&!aiStarted){aiStarted=true;initAI()}if(query&&aiReady){$('#aiStatus').textContent=contextLabel(query)||'상황을 이해하는 중…';worker.postMessage({type:'query',query:expandedQuery(query),id:requestId})}else if(!aiReady&&query){$('#aiStatus').textContent=contextLabel(query)||'어울리는 짤을 찾는 중'}}
 $('#searchForm').onsubmit=e=>{e.preventDefault();search($('#query').value)};
 for(const b of document.querySelectorAll('[data-query]'))b.onclick=()=>search(b.dataset.query);
 async function initAI(){
@@ -121,15 +130,15 @@ async function initAI(){
  worker=new Worker('./ai-worker.js',{type:'module'});
  worker.onmessage=({data})=>{if(data.type==='progress'){$('#aiStatus').textContent=contextLabel(query)||'추천을 다듬는 중'}
  else if(data.type==='ready'){aiReady=true;$('#aiStatus').textContent=contextLabel(query)||'추천을 다듬는 중';if(query)worker.postMessage({type:'query',query:expandedQuery(query),id:requestId})}
- else if(data.type==='result'&&data.id===requestId){currentVector=new Float32Array(data.vector);$('#aiStatus').textContent=contextLabel(query)||'어울리는 짤을 찾았어요';if(!resultsTouched)rank()}
- else if(data.type==='error'){$('#aiStatus').textContent='상황 키워드 검색 사용 중';console.warn('Semantic search unavailable:',data.error)}};
- worker.onerror=()=>{$('#aiStatus').textContent='상황 키워드 검색 사용 중'};worker.postMessage({type:'init'});
- }catch{$('#aiStatus').textContent='상황 키워드 검색 사용 중'}
+ else if(data.type==='result'&&data.id===requestId){currentVector=new Float32Array(data.vector);$('#aiStatus').textContent=contextLabel(query)||'어울리는 짤을 찾았어요';if(!resultsTouched)rank();finishSearchMetrics('semantic')}
+ else if(data.type==='error'&&(data.id==null||data.id===requestId)){aiFailed=true;finishSearchMetrics('keyword');$('#aiStatus').textContent='상황 키워드 검색 사용 중';console.warn('Semantic search unavailable:',data.error)}};
+ worker.onerror=()=>{aiFailed=true;finishSearchMetrics('keyword');$('#aiStatus').textContent='상황 키워드 검색 사용 중'};worker.postMessage({type:'init'});
+ }catch{aiFailed=true;finishSearchMetrics('keyword');$('#aiStatus').textContent='상황 키워드 검색 사용 중'}
 }
 try{const r=await fetch('./catalog.json');if(!r.ok)throw Error();catalogMeta=await r.json();baseCatalogCount=catalogMeta.items.length;
 let items=catalogMeta.items;
 try{
- const response=await fetch('./everyday-replies.json?v=famous-scenes-1');if(!response.ok)throw Error('supplement');
+ const response=await fetch('./everyday-replies.json?v=cinema-home-1');if(!response.ok)throw Error('supplement');
  const extra=await response.json();
  if(!Array.isArray(extra.items)||!Array.isArray(extra.overrides))throw Error('supplement schema');
  let supplementVectors;

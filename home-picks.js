@@ -31,5 +31,16 @@ export const homeSuggestions=[
  {id:'rDtFQV52R',group:'reply',title:'친구의 제안에 바로 콜! 할 때',description:'좋은 계획을 들었다면 망설임 없이 함께하겠다고 답해 보세요.'},
  {id:'Fug-4mVfc',group:'support',title:'이제 고민 말고 시작하고 싶을 때',description:'같이 망설이던 친구에게 일단 해보자고 기운을 불어넣어 주세요.'},
  {id:'xDXTRP7bV',group:'reaction',title:'그거 마음에 든다고 말할 때',description:'친구가 고른 메뉴나 계획이 좋다면 짧고 확실하게 반응해 보세요.'},
- {id:'m21sci4-f',group:'celebration',title:'친구의 좋은 소식에 신났을 때',description:'잘됐다는 소식에 내 일처럼 기뻐하고 박수쳐 주세요.'}
+ {id:'m21sci4-f',group:'celebration',title:'친구의 좋은 소식에 신났을 때',description:'잘됐다는 소식에 내 일처럼 기뻐하고 박수쳐 주세요.'},
+ {"id": "U4Q2nXqNp", "group": "reply", "title": "친구와 판을 더 키우고 싶을 때", "description": "망설이던 계획에 자신 있게 힘을 실어주고 싶을 때 보내보세요."},
+ {"id": "r11Z_TLC", "group": "friends", "title": "친구가 수상한 꼼수를 쓸 때", "description": "친한 사이에서 웃으면서 잠깐 멈춰 세우고 싶을 때 써보세요."},
+ {"id": "Sy-T8aIR", "group": "reaction", "title": "황당해서 말이 안 나올 때", "description": "어처구니없는 상황을 길게 설명하기 귀찮을 때 보내보세요."},
+ {"id": "ByBa2aVMg4", "group": "friends", "title": "친구의 참견에 한마디 하고 싶을 때", "description": "서로 장난이 통하는 사이에서 시크하게 받아치고 싶을 때 써보세요."},
+ {"id": "al0YIiXX-F", "group": "support", "title": "친구의 준비성에 감탄했을 때", "description": "약속부터 여행까지 빈틈없이 준비한 친구를 능청스럽게 칭찬해 보세요."},
+ {"id": "jYTOD7iDz-home-still", "group": "reaction", "title": "등장부터 자신감 넘치고 싶을 때", "description": "단톡방에 돌아왔거나 내 차례가 왔을 때 당당하게 존재감을 보여주세요."},
+ {"id": "f96Y9PiBm", "group": "work", "title": "예상보다 일이 너무 잘 풀릴 때", "description": "가볍게 시작한 일이 뜻밖의 대박이 됐다면 친구에게 자랑해 보세요."},
+ {"id": "YpkBJCr13", "group": "friends", "title": "억울하게 범인으로 몰렸을 때", "description": "친구들의 장난스러운 추궁에 내가 한 일이 아니라며 받아쳐 보세요."},
+ {"id": "zG9DrsRYf", "group": "reply", "title": "솔로라고 유쾌하게 답하고 싶을 때", "description": "연애 소식을 묻는 친구에게 웃으면서 짧게 답해 보세요."},
+ {"id": "BwPS03Qfz", "group": "reaction", "title": "친구가 말을 뜸 들여 답답할 때", "description": "서로 장난이 통하는 사이에서 속 시원히 말해 달라고 재촉해 보세요."},
+ {"id": "tPYAQqBaW-home-still", "group": "rest", "title": "괜히 서럽고 울컥하는 날", "description": "작은 일에도 눈물이 날 것 같은 기분을 편한 친구에게 보여주세요."}
 ];
