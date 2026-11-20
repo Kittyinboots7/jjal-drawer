@@ -1,5 +1,5 @@
 import {copyAnimated,animationMime} from './motion-copy.js?v=1';
-import {getIntents,keywordScore,cosine,contextAdjustment,contextLabel,expandedQuery,rankItems} from './search.js?v=daily-pack-1';
+import {getIntents,keywordScore,cosine,contextAdjustment,contextLabel,expandedQuery,rankItems} from './search.js?v=famous-scenes-1';
 import {homeSuggestions} from './home-picks.js?v=everyday-1';
 const $=s=>document.querySelector(s),grid=$('#grid');
 let catalog=[],catalogMeta,mediaKind='photo',query='',page=0,showSaved=false,ranked=[],vectors,worker,aiReady=false,currentVector=null,requestId=0,currentItem;
@@ -129,7 +129,7 @@ async function initAI(){
 try{const r=await fetch('./catalog.json');if(!r.ok)throw Error();catalogMeta=await r.json();baseCatalogCount=catalogMeta.items.length;
 let items=catalogMeta.items;
 try{
- const response=await fetch('./everyday-replies.json?v=user-pack-1');if(!response.ok)throw Error('supplement');
+ const response=await fetch('./everyday-replies.json?v=famous-scenes-1');if(!response.ok)throw Error('supplement');
  const extra=await response.json();
  if(!Array.isArray(extra.items)||!Array.isArray(extra.overrides))throw Error('supplement schema');
  let supplementVectors;
