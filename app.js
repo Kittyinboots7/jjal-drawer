@@ -47,13 +47,13 @@ function rank(){
 }
 function render(){
  $('#saved').classList.toggle('selected',showSaved);$('#saved').setAttribute('aria-pressed',String(showSaved));
- $('#resultTitle').textContent=showSaved?'모아둔 짤':query?'이 말에 어울리는 짤':'오늘 꺼내보기 좋은 짤';
+ $('#resultTitle').textContent=showSaved?'보관한 짤':query?'이 말에 어울리는 짤':'오늘 꺼내보기 좋은 짤';
  const home=!query&&!showSaved;
  document.body.classList.toggle('has-results',!home);
  $('.results').classList.toggle('home',home);
  $('#shuffleHome').hidden=!home;$('.filters').hidden=home;$('.tools').hidden=home||showSaved;
- $('#resultTitle').textContent=home?'오늘 써먹을 짤':showSaved?'모아둔 짤':'이 말에 어울리는 짤';
- $('#resultInfo').textContent=home?'오늘 써먹을 추천 짤 한 장':showSaved?`${ranked.length}개의 짤을 모아뒀어요`:`“${query}” 검색 결과`;
+ $('#resultTitle').textContent=home?'오늘 써먹을 짤':showSaved?'보관한 짤':'이 말에 어울리는 짤';
+ $('#resultInfo').textContent=home?'오늘 써먹을 추천 짤 한 장':showSaved?`${ranked.length}개의 짤을 보관했어요`:`“${query}” 검색 결과`;
   grid.replaceChildren();for(const {d} of ranked.slice(page,page+(home?1:3))){
   const card=document.createElement('article');card.className='card';
   const preview=document.createElement('button');preview.className='card-preview';preview.setAttribute('aria-label',d.title+' 자세히 보기');
@@ -77,8 +77,8 @@ function render(){
  }
  $('#empty').hidden=ranked.length>0||home;$('#more').hidden=home||ranked.length<=page+3;$('#previous').hidden=home||page===0;saveFav()
 }
-function openDetail(d){currentItem=d;$('#detailMedia').replaceChildren();let img=new Image();img.src=safeURL(d.imageUrl);img.alt=d.title;$('#detailMedia').append(img);$('#detailShow').textContent=d.show+' · '+d.genre;$('#detailTitle').textContent=d.title.replace(/움짤|이미지/g,'').trim();$('#original').href=safeURL(d.originalImageUrl||d.imageUrl);$('#source').href=safeURL(d.sourceUrl);$('#source').textContent=(d.sourceProvider||'짤봇')+' 출처 보기';$('#favorite').textContent=favorites.has(d.shortId)?'♥ 모아뒀어요':'♡ 모아두기';$('#detailHint').textContent=kindOf(d)==='motion'?'블로그에는 복사해서 붙여넣으세요. 카톡에서 링크로 붙으면 원본을 저장해 첨부해 주세요.':'길게 누르거나 원본을 열어 저장할 수 있어요.';$('#copyImage').textContent='복사';$('#downloadOriginal').hidden=kindOf(d)!=='motion';$('#detail').showModal()}
-$('#favorite').onclick=()=>{if(!currentItem)return;const id=currentItem.shortId;favorites.has(id)?favorites.delete(id):favorites.add(id);$('#favorite').textContent=favorites.has(id)?'♥ 모아뒀어요':'♡ 모아두기';rank()};
+function openDetail(d){currentItem=d;$('#detailMedia').replaceChildren();let img=new Image();img.src=safeURL(d.imageUrl);img.alt=d.title;$('#detailMedia').append(img);$('#detailShow').textContent=d.show+' · '+d.genre;$('#original').href=safeURL(d.originalImageUrl||d.imageUrl);$('#source').href=safeURL(d.sourceUrl);$('#source').textContent=(d.sourceProvider||'짤봇')+' 출처 보기';$('#favorite').textContent=favorites.has(d.shortId)?'♥ 보관했어요':'♡ 보관하기';$('#detailHint').textContent=kindOf(d)==='motion'?'블로그에는 복사해서 붙여넣으세요. 카톡에서 링크로 붙으면 원본을 저장해 첨부해 주세요.':'길게 누르거나 원본을 열어 저장할 수 있어요.';$('#copyImage').textContent='복사';$('#downloadOriginal').hidden=kindOf(d)!=='motion';$('#detail').showModal()}
+$('#favorite').onclick=()=>{if(!currentItem)return;const id=currentItem.shortId;favorites.has(id)?favorites.delete(id):favorites.add(id);$('#favorite').textContent=favorites.has(id)?'♥ 보관했어요':'♡ 보관하기';rank()};
 $('#copyImage').onclick=()=>{if(currentItem)copyItem(currentItem)};
 $('#downloadOriginal').onclick=()=>{if(currentItem)downloadItem(currentItem,$('#downloadOriginal'))};
 async function copyItem(d){
